@@ -1,5 +1,6 @@
 package com.example.githubapi.service;
 
+import com.example.githubapi.configuration.ConfigProperties;
 import com.example.githubapi.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,28 +15,34 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 class GithubServiceImplTest {
     @Mock
     private RestTemplate restTemplate;
+    @Mock
+    private ConfigProperties prop;
     @InjectMocks
     private GithubServiceImpl githubService;
+    private String username;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        when(prop.getGithubBaseUrl()).thenReturn("/example");
+        username = "example";
     }
 
     @Test
     void getUserRepositories_withUsernameExists_returnsRepositories() {
         //given
-        String username = "example";
         GithubResponse[] response = getResponse();
         Branch[] branchResponse = getBranchResponse();
         when(restTemplate.getForObject(anyString(), eq(GithubResponse[].class))).thenReturn(response);
         when(restTemplate.getForObject(anyString(), eq(Branch[].class))).thenReturn(branchResponse);
+
         //when
         List<RepositoryInfo> repositories = githubService.getUserRepositories(username);
 
@@ -47,8 +54,7 @@ class GithubServiceImplTest {
     @Test
     void getUserRepositories_withUserNoExists_throwsHttpClientErrorExceptionNotFound() {
         //given
-        String username = "example";
-        when(restTemplate.getForObject(anyString(),eq(GithubResponse[].class))).thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
+        when(restTemplate.getForObject(anyString(), eq(GithubResponse[].class))).thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
 
         //when
         Exception exception = assertThrows(HttpClientErrorException.class, () -> githubService.getUserRepositories(username));

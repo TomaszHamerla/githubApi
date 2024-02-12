@@ -1,6 +1,6 @@
 package com.example.githubapi.configuration;
 
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
@@ -8,14 +8,15 @@ import org.springframework.web.client.RestTemplate;
 import java.util.Collections;
 
 @Configuration
+@RequiredArgsConstructor
 public class RestTemplateConfig {
-    @Value("${githubApiToken}")
-    private String token;
+    private final ConfigProperties prop;
+
     @Bean
-    public RestTemplate restTemplate(){
+    public RestTemplate restTemplate() {
         RestTemplate restTemplate = new RestTemplate();
-        restTemplate.setInterceptors(Collections.singletonList((request, body, execution)->{
-            request.getHeaders().add("Authorization", "Bearer " + token);
+        restTemplate.setInterceptors(Collections.singletonList((request, body, execution) -> {
+            request.getHeaders().add("Authorization", "Bearer " + prop.getGithubApiToken());
             return execution.execute(request, body);
         }));
         return restTemplate;
