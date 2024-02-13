@@ -11,7 +11,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -25,23 +24,16 @@ public class GithubServiceImpl implements GithubService {
         // Not handling the NotFound exception here because it's handled globally through RestControllerAdvice
         GithubResponse[] response = restTemplate.getForObject(apiUrl, GithubResponse[].class);
         return Arrays.stream(response)
-                .filter(r -> !r.isFork())
-                .map((r) -> RepositoryInfo.builder()
-                        .repositoryName(r.getName())
-                        .ownerLogin(r.getOwner().getLogin())
-                        .branches(getBranches(username, r.getName()))
-                        .build())
-                .collect(Collectors.toList());
+                .filter(r -> !r.fork())
+                .map(r -> new RepositoryInfo(r.name(), r.owner(), getBranches(username, r.name())))
+                .toList();
     }
 
     private List<BranchInfo> getBranches(String username, String repoName) {
         String branchUrl = String.format("%s/repos/%s/%s/branches", prop.getGithubBaseUrl(), username, repoName);
         Branch[] response = restTemplate.getForObject(branchUrl, Branch[].class);
         return Arrays.stream(response)
-                .map((b) -> BranchInfo.builder()
-                        .name(b.getName())
-                        .lastCommitSha(b.getCommit().getSha())
-                        .build())
-                .collect(Collectors.toList());
+                .map(b -> new BranchInfo(b.name(), b.commit().sha()))
+                .toList();
     }
 }
