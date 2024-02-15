@@ -17,7 +17,7 @@ public class GithubController {
     private final GithubService githubService;
 
     @GetMapping("/{username}")
-    List<RepositoryInfo> listUserRepositories(@PathVariable String username) {
+    List<RepositoryInfo> getUserRepositories(@PathVariable String username) {
         return githubService.getUserRepositories(username);
     }
 }
