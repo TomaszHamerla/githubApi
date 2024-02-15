@@ -1,10 +1,4 @@
 package com.example.githubapi.model;
 
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class Owner {
-    private String login;
+public record Owner(String login) {
 }
