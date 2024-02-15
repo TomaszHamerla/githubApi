@@ -1,99 +1,62 @@
 package com.example.githubapi.service;
 
 import com.example.githubapi.configuration.ConfigProperties;
+import com.example.githubapi.exceptionHandler.UserNotFoundException;
 import com.example.githubapi.model.*;
-import org.junit.jupiter.api.BeforeEach;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.client.RestClientTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withResourceNotFound;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+@RestClientTest(GithubServiceImpl.class)
 class GithubServiceImplTest {
-    @Mock
-    private RestTemplate restTemplate;
-    @Mock
-    private ConfigProperties prop;
-    @InjectMocks
-    private GithubServiceImpl githubService;
-    private String username;
+    @Autowired
+    MockRestServiceServer server;
+    @Autowired
+    ObjectMapper objectMapper;
+    @Autowired
+    GithubServiceImpl githubService;
+    @MockBean
+    ConfigProperties configProperties;
 
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-        when(prop.getGithubBaseUrl()).thenReturn("/example");
-        username = "example";
+    @Test
+    void getUserRepositoriesWithUserExistsShouldReturnsListOfRepositoryInfo() throws JsonProcessingException {
+        //given
+        RepositoryInfo repositories =
+                new RepositoryInfo("repo1", new Owner("user1"), List.of(new BranchInfo("branch1", "sha1")));
+        List<GithubResponse> githubResponses = List.of(new GithubResponse("repo1", new Owner("user1"), false));
+        List<Branch> branches = List.of(new Branch("branch1", new Commit("sha1")));
+
+        //when
+        server.expect(requestTo("/users/user1/repos"))
+                .andRespond(withSuccess(objectMapper.writeValueAsString(githubResponses), MediaType.APPLICATION_JSON));
+        server.expect(requestTo("/repos/user1/repo1/branches"))
+                .andRespond(withSuccess(objectMapper.writeValueAsString(branches), MediaType.APPLICATION_JSON));
+
+        //then
+        List<RepositoryInfo> userRepositories = githubService.getUserRepositories("user1");
+        assertThat(userRepositories.getFirst()).isEqualTo(repositories);
     }
 
     @Test
-    void getUserRepositories_withUsernameExists_returnsRepositories() {
-        //given
-        GithubResponse[] response = getResponse();
-        Branch[] branchResponse = getBranchResponse();
-        when(restTemplate.getForObject(anyString(), eq(GithubResponse[].class))).thenReturn(response);
-        when(restTemplate.getForObject(anyString(), eq(Branch[].class))).thenReturn(branchResponse);
-
+    void getUserRepositoriesWithUserDoesNotExistShouldThrowUserNotFoundException() {
         //when
-        List<RepositoryInfo> repositories = githubService.getUserRepositories(username);
+        server.expect(requestTo("/users/user1/repos"))
+                .andRespond(withResourceNotFound());
 
         //then
-        assertNotNull(repositories);
-        assertEquals(repositories.get(0).getRepositoryName(), "NameExample");
-    }
-
-    @Test
-    void getUserRepositories_withUserNoExists_throwsHttpClientErrorExceptionNotFound() {
-        //given
-        when(restTemplate.getForObject(anyString(), eq(GithubResponse[].class))).thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
-
-        //when
-        Exception exception = assertThrows(HttpClientErrorException.class, () -> githubService.getUserRepositories(username));
-
-        //then
-        assertThat(exception).isInstanceOf(HttpClientErrorException.class);
-    }
-
-    private Branch[] getBranchResponse() {
-        Commit commit = new Commit();
-        commit.setSha("exampleSha");
-        Branch branch = new Branch();
-        branch.setName("exampleBranch");
-        branch.setCommit(commit);
-        return new Branch[]{branch};
-    }
-
-    private GithubResponse[] getResponse() {
-        Owner owner = new Owner();
-        owner.setLogin("OwnerExample");
-        GithubResponse githubResponse = new GithubResponse();
-        githubResponse.setFork(false);
-        githubResponse.setOwner(owner);
-        githubResponse.setName("NameExample");
-
-        Owner owner1 = new Owner();
-        owner1.setLogin("OwnerExample1");
-        GithubResponse githubResponse1 = new GithubResponse();
-        githubResponse1.setFork(false);
-        githubResponse1.setOwner(owner1);
-        githubResponse1.setName("NameExample1");
-
-        Owner owner2 = new Owner();
-        owner2.setLogin("OwnerExample2");
-        GithubResponse githubResponse2 = new GithubResponse();
-        githubResponse2.setFork(false);
-        githubResponse2.setOwner(owner2);
-        githubResponse2.setName("NameExample2");
-
-        return new GithubResponse[]{githubResponse, githubResponse1, githubResponse2};
+        assertThrows(UserNotFoundException.class, () -> githubService.getUserRepositories("user1"));
     }
 }
