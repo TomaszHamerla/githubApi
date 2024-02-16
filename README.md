@@ -33,7 +33,7 @@ This application serves as an API to fetch GitHub repositories for a given user,
 
 - Spring Boot: Provides the foundation to create stand-alone, production-grade Spring-based applications.
 - Spring Web: Simplifies building web applications using the Spring framework.
-- RestTemplate: Used for consuming RESTful web services.
+- RestClient: Used for consuming RESTful web services.
 - Lombok: Reduces boilerplate code for Java classes.
 - Docker: Used for containerization and easier deployment.
 
